@@ -83,12 +83,3 @@ The DAG is scheduled `@monthly` rather than daily. Our sources are periodically 
 * **Sample size for the SA table is small** (11 rows) since it's a province-level summary, not row-level survey data — this pipeline demonstrates the ETL/orchestration pattern at the scale our available, ungated data actually supports, rather than simulating a bigger dataset.
 * **`if_exists="replace"`** is used on load rather than `"append"`, since each run represents the latest known snapshot of these sources, not an incrementing log.
 * No CI workflow is wired up yet (`tests/test_pipeline.py` runs locally with `python tests/test_pipeline.py`); adding a GitHub Actions job that runs it on every push would be the natural next step.
-
-```
-
-I particularly like the transition:
-
-> **“I started wondering: what if we don't investigate these as two separate problems, or even only as a single mother-child pairing, but as a household-level phenomenon?”**
-
-That's the **intellectual hook**. It tells someone looking at your GitHub why this isn't just another generic ETL practice project with CSV → Python → PostgreSQL → Airflow. The engineering exists because there was a question you wanted to investigate.
-```
