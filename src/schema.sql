@@ -12,4 +12,3 @@ SELECT
     food_price_volatility_index,
     nutritional_resilience_index
 FROM integrated_eat_trade_matrix
-ORDER BY nutritional_resilience_index DESC;
