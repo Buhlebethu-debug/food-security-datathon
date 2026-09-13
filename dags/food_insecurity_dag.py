@@ -1,52 +1,36 @@
-"""
-food_insecurity_dag.py
------------------------
-Orchestrates the ETL pipeline (src/etl.py) using Airflow's TaskFlow API,
-following the pattern from "Introduction to Data Engineering" (DataCamp):
-  - @dag decorator with a start_date and a cron schedule
-  - the ETL call wrapped in a @task
-  - the dag() call at module level so Airflow's scheduler picks it up
-
-Schedule choice: this pipeline's sources are published research snapshots
-(a peer-reviewed paper's table, a Stats SA report), not live operational
-data — there is nothing new to pull every midnight. A monthly schedule
-("@monthly") is used instead of the course's daily example, matching how
-often these upstream sources actually get revised. Swap the `schedule`
-argument back to "0 0 * * *" if this pipeline is later pointed at a
-live-updating source (e.g. a FAOSTAT API endpoint) instead of versioned
-CSV snapshots.
-"""
-
-import sys
 import os
+import sys
 from datetime import datetime
+from airflow.decorators import dag, task
 
-try:
-    # Airflow 3.x preferred import path
-    from airflow.sdk import dag, task
-except ImportError:
-    # Airflow 2.x fallback (the API taught in most current courses)
-    from airflow.decorators import dag, task
-
-# Make src/ importable from within the Airflow task
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
+# Ensure src directory is available on path
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
 
 
 @dag(
-    dag_id="food_insecurity_etl",
+    dag_id="integrated_eat_trade_pipeline",
+    schedule_interval="@monthly",
     start_date=datetime(2026, 1, 1),
-    schedule="@monthly",
     catchup=False,
-    tags=["datathon", "food-insecurity", "double-burden"],
+    tags=["women_in_data", "eat_track", "trade_track"],
 )
-def food_insecurity_etl_dag():
+def food_security_pipeline():
 
-    @task
-    def run_etl():
-        from etl import etl
-        etl()
+  @task
+  def extract_task():
+    from extract import create_raw_datasets
 
-    run_etl()
+    create_raw_datasets()
+
+  @task
+  def transform_and_load_task():
+    from load import load_to_postgres
+
+    load_to_postgres()
+
+  extract_task() >> transform_and_load_task()
 
 
-food_insecurity_etl_dag()
+pipeline = food_security_pipeline()

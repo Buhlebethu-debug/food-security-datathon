@@ -1,53 +1,32 @@
-"""
-load.py
--------
-Loading layer of the ETL pipeline. Writes analysis-ready tables to
-PostgreSQL using pandas' `.to_sql`, exactly as taught in the course
-("Loading to Postgres" video): table name, engine, and an if_exists
-strategy.
-
-Connection settings are read from environment variables so credentials
-are never hardcoded in source (see .env.example).
-"""
-
 import os
-from sqlalchemy import create_engine
 import pandas as pd
+from sqlalchemy import create_engine
+from transform import transform_all
 
 
-def get_engine():
-    user = os.environ.get("PG_USER", "postgres")
-    password = os.environ.get("PG_PASSWORD", "postgres")
-    host = os.environ.get("PG_HOST", "localhost")
-    port = os.environ.get("PG_PORT", "5432")
-    db = os.environ.get("PG_DATABASE", "food_datathon")
-    url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}"
-    return create_engine(url)
+def load_to_postgres():
+  # Postgres.app automatically uses your macOS username and default port 5432
+  db_user = os.getenv("USER", "postgres")
+  db_pass = ""  # Postgres.app leaves local password empty by default
+  db_host = "localhost"
+  db_port = "5432"
+  db_name = "food_datathon"
 
+  db_url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+  engine = create_engine(db_url)
 
-def load_table(df: pd.DataFrame, table_name: str, engine=None, if_exists: str = "replace") -> None:
-    """
-    Load a single DataFrame into Postgres.
+  # Fetch transformed analytical layer from Step 2
+  integrated_df = transform_all()
 
-    if_exists="replace" is used here (rather than "append") because this
-    pipeline's source data is a periodically-refreshed research snapshot,
-    not an incrementing log — each run should represent the latest known
-    state, not accumulate duplicate rows.
-    """
-    engine = engine or get_engine()
-    df.to_sql(table_name, engine, if_exists=if_exists, index=False)
-    print(f"load_table: wrote {len(df)} rows to '{table_name}'")
-
-
-def load_all(tables: dict, engine=None) -> None:
-    engine = engine or get_engine()
-    for name, df in tables.items():
-        load_table(df, name, engine=engine)
+  # Write table directly to PostgreSQL
+  integrated_df.to_sql(
+      "integrated_eat_trade_matrix", engine, if_exists="replace", index=False
+  )
+  print(
+      "✓ Loaded table 'integrated_eat_trade_matrix' to PostgreSQL"
+      " successfully!"
+  )
 
 
 if __name__ == "__main__":
-    from extract import extract_dbm_data, extract_sa_province_data
-    from transform import build_analysis_table
-
-    tables = build_analysis_table(extract_dbm_data(), extract_sa_province_data())
-    load_all(tables)
+  load_to_postgres()

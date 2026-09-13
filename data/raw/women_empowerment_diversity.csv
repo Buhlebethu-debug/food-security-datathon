@@ -1,0 +1,8 @@
+country,country_code,female_ag_decision_score,crop_diversity_index,dietary_diversity_score
+Malawi,MWI,68.4,0.72,61.2
+Tanzania,TZA,62.1,0.68,58.5
+Burkina Faso,BFA,54.0,0.55,51.0
+Ghana,GHA,71.2,0.79,66.4
+India,IND,48.9,0.61,54.3
+Timor-Leste,TLS,59.3,0.58,50.8
+South Africa,ZAF,58.2,0.64,56.1
