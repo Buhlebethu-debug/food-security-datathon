@@ -51,7 +51,7 @@ tests/               # smoke tests for extract/transform (no DB required)
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env   # edit if your Postgres isn't on localhost:5432
+cp .env.example .env   # edit if your Postgres isn't on localhost:5433
 createdb food_datathon
 
 python src/etl.py
