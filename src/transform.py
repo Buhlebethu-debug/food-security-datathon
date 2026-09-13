@@ -4,11 +4,12 @@ Transformation layer of the ETL pipeline.
 This module:
 1. Cleans the extracted datasets.
 2. Standardizes country identifiers.
-3. Derives DBM risk tiers.
-4. Calculates the gender food-insecurity gap.
-5. Merges the country-level datasets.
-6. Calculates the Nutritional Resilience Index (NRI).
-7. Produces analysis-ready tables for the load layer.
+3. Preserves DBM survey-round information.
+4. Derives DBM risk tiers.
+5. Calculates the gender food-insecurity gap.
+6. Merges the country-level datasets.
+7. Calculates the Nutritional Resilience Index (NRI).
+8. Produces analysis-ready tables for the load layer.
 """
 
 import pandas as pd
@@ -22,14 +23,34 @@ def clean_dbm_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Clean the DBM country table.
 
-    - Strip survey-round suffixes from country names.
+    - Preserve the original country value.
+    - Extract survey-round suffixes such as 2015a and 2015b.
+    - Standardize country names.
     - Drop rows with missing core DBM metrics.
     """
 
     df = df.copy()
 
+    # Preserve the original country value from the raw dataset.
+    df["country_original"] = df["country"].str.strip()
+
+    # Extract survey round where present.
+    # Example:
+    # Malawi_2015a -> 2015a
+    # Malawi_2015b -> 2015b
+    # Ghana        -> NaN
+    df["survey_round"] = (
+        df["country_original"]
+        .str.extract(r"_(\d{4}[a-z]?)$", expand=False)
+    )
+
+    # Create a standardized country name.
+    # Example:
+    # Malawi_2015a -> Malawi
+    # Malawi_2015b -> Malawi
     df["country_clean"] = (
-        df["country"]
+        df["country_original"]
+        .str.replace(r"_\d{4}[a-z]?$", "", regex=True)
         .str.replace(r"\s*\(.*\)", "", regex=True)
         .str.strip()
     )
@@ -113,7 +134,6 @@ def transform_gender_gap(
 
     df = df.copy()
 
-    # Only calculate the gap when the female-headed column exists.
     if "pct_food_insecure_female_headed" in df.columns:
         df["female_headed_gap_pp"] = (
             df["pct_food_insecure_female_headed"]
@@ -255,28 +275,35 @@ def build_country_analysis_table(
     - Trade dependency and food price volatility
 
     All datasets are joined using ISO3 country codes.
+
+    Note:
+    DBM survey-round information is preserved during cleaning.
+    No Malawi survey observation is selected automatically here because
+    the raw data does not establish whether 2015a or 2015b is preferable.
     """
 
-    # Clean datasets
+    # Clean DBM data and assign risk tiers.
     dbm_clean = flag_dbm_risk_tier(
         clean_dbm_data(dbm_df)
     )
 
+    # Clean women's empowerment data.
     empowerment_clean = clean_empowerment_data(
         empowerment_df
     )
 
+    # Clean trade data.
     trade_clean = clean_trade_data(
         trade_df
     )
 
-    # Standardize DBM country code if available
+    # Standardize DBM column names.
     dbm_clean.columns = [
         column.lower().strip()
         for column in dbm_clean.columns
     ]
 
-    # Make sure country_code exists
+    # Make sure country_code exists.
     if "country_code" not in dbm_clean.columns:
         raise ValueError(
             "build_country_analysis_table: "
@@ -284,7 +311,7 @@ def build_country_analysis_table(
             "to merge with the other country datasets."
         )
 
-    # Merge DBM + empowerment
+    # Merge DBM + empowerment data.
     merged = pd.merge(
         dbm_clean,
         empowerment_clean,
@@ -293,13 +320,13 @@ def build_country_analysis_table(
         suffixes=("", "_empowerment")
     )
 
-    # Remove duplicate country column created by the merge
+    # Remove duplicate country column created by the merge.
     if "country_empowerment" in merged.columns:
         merged = merged.drop(
             columns=["country_empowerment"]
         )
 
-    # Merge trade data
+    # Merge trade data.
     final_df = pd.merge(
         merged,
         trade_clean,
@@ -307,7 +334,7 @@ def build_country_analysis_table(
         how="inner"
     )
 
-    # Calculate NRI
+    # Calculate NRI.
     final_df = calculate_nri(final_df)
 
     return final_df
@@ -360,16 +387,20 @@ def build_analysis_tables(
         }
     """
 
+    # Build integrated country-level table.
     country_analysis = build_country_analysis_table(
         dbm_df,
         empowerment_df,
         trade_df
     )
 
+    # Build South African provincial table.
     sa_analysis = build_sa_analysis_table(
         sa_df
     )
 
+    # Build DBM country table.
+    # Both Malawi observations are intentionally retained.
     dbm_analysis = flag_dbm_risk_tier(
         clean_dbm_data(dbm_df)
     )
@@ -377,6 +408,7 @@ def build_analysis_tables(
     dbm_analysis = dbm_analysis[
         [
             "country_clean",
+            "survey_round",
             "n",
             "stunting_pct",
             "overweight_mother_pct",
