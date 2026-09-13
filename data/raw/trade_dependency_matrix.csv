@@ -1,8 +1,8 @@
-country_code,net_staple_import_dependency_pct,food_price_volatility_index
-MWI,18.5,1.24
-TZA,14.2,1.1
-BFA,32.1,1.85
-GHA,41.5,1.62
-IND,5.2,1.05
-TLS,62.4,2.15
-ZAF,22.8,1.35
+country,country_code,net_staple_import_dependency_pct,import_data_year
+Timor-Leste,TLS,44.1,2017
+South Africa,ZAF,2.6,2020
+India,IND,-12.3,2020
+Burkina Faso,BFA,17.1,2020
+Malawi,MWI,2.2,2020
+Ghana,GHA,35.6,2020
+United Republic of Tanzania,TZA,-0.9,2020

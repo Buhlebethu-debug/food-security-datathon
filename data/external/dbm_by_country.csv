@@ -1,0 +1,8 @@
+Indicator,Country,ISO3,Region,Start Year,End Year,Value,Unit,Source
+Double burden of malnutrition,Burkina Faso,BFA,Sub-Saharan Africa,2010,2010,No DBM,No DBM=0; DBM at >20% overweight prevalence=1; DBM at >30% overweight prevalence=2; DBM at >40% overweight prevalence=3,Popkin et al. 2020
+Double burden of malnutrition,Ghana,GHA,Sub-Saharan Africa,2010,2010,No DBM,No DBM=0; DBM at >20% overweight prevalence=1; DBM at >30% overweight prevalence=2; DBM at >40% overweight prevalence=3,Popkin et al. 2020
+Double burden of malnutrition,India,IND,Southern Asia,2010,2010,DBM at >20% overweight prevalence,No DBM=0; DBM at >20% overweight prevalence=1; DBM at >30% overweight prevalence=2; DBM at >40% overweight prevalence=3,Popkin et al. 2020
+Double burden of malnutrition,Malawi,MWI,Sub-Saharan Africa,2010,2010,DBM at >30% overweight prevalence,No DBM=0; DBM at >20% overweight prevalence=1; DBM at >30% overweight prevalence=2; DBM at >40% overweight prevalence=3,Popkin et al. 2020
+Double burden of malnutrition,South Africa,ZAF,Sub-Saharan Africa,2010,2010,No DBM,No DBM=0; DBM at >20% overweight prevalence=1; DBM at >30% overweight prevalence=2; DBM at >40% overweight prevalence=3,Popkin et al. 2020
+Double burden of malnutrition,Timor-Leste,TLS,South-eastern Asia,2010,2010,DBM at >20% overweight prevalence,No DBM=0; DBM at >20% overweight prevalence=1; DBM at >30% overweight prevalence=2; DBM at >40% overweight prevalence=3,Popkin et al. 2020
+Double burden of malnutrition,United Republic of Tanzania,TZA,Sub-Saharan Africa,2010,2010,DBM at >30% overweight prevalence,No DBM=0; DBM at >20% overweight prevalence=1; DBM at >30% overweight prevalence=2; DBM at >40% overweight prevalence=3,Popkin et al. 2020

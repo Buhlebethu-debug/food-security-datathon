@@ -1,0 +1,8 @@
+country,country_code,dbm_category,dbm_score,dbm_data_year
+Burkina Faso,BFA,No DBM,0,2010
+Ghana,GHA,No DBM,0,2010
+India,IND,DBM at >20% overweight prevalence,1,2010
+Malawi,MWI,DBM at >30% overweight prevalence,2,2010
+South Africa,ZAF,No DBM,0,2010
+Timor-Leste,TLS,DBM at >20% overweight prevalence,1,2010
+United Republic of Tanzania,TZA,DBM at >30% overweight prevalence,2,2010

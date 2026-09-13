@@ -1,8 +1,8 @@
-country,country_code,female_ag_decision_score,crop_diversity_index,dietary_diversity_score
-Malawi,MWI,68.4,0.72,61.2
-Tanzania,TZA,62.1,0.68,58.5
-Burkina Faso,BFA,54.0,0.55,51.0
-Ghana,GHA,71.2,0.79,66.4
-India,IND,48.9,0.61,54.3
-Timor-Leste,TLS,59.3,0.58,50.8
-South Africa,ZAF,58.2,0.64,56.1
+country,country_code,female_decision_score,decision_data_year,crop_diversity_index,crop_item_count,crop_data_year
+Burkina Faso,BFA,15.9,2021,0.7312,44,2022
+Ghana,GHA,55.6,2022,0.5029,57,2022
+India,IND,73.3,2021,0.6095,93,2022
+Malawi,MWI,46.9,2016,0.5877,73,2022
+Timor-Leste,TLS,87.2,2016,0.6623,29,2022
+Tanzania,TZA,54.6,2022,0.6237,79,2022
+South Africa,ZAF,87.2,2016,0.5333,79,2022

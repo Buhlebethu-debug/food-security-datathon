@@ -1,0 +1,8 @@
+country,country_code,dbm_category,dbm_score,dbm_data_year,female_decision_score,decision_data_year,crop_diversity_index,crop_item_count,crop_data_year,net_staple_import_dependency_pct,import_data_year,source_years,data_years_mismatched,nutritional_resilience_index
+India,IND,DBM at >20% overweight prevalence,1,2010,73.3,2021,0.6095,93,2022,-12.3,2020,"2010, 2021, 2022, 2020",True,56.16
+South Africa,ZAF,No DBM,0,2010,87.2,2016,0.5333,79,2022,2.6,2020,"2010, 2016, 2022, 2020",True,55.69
+Timor-Leste,TLS,DBM at >20% overweight prevalence,1,2010,87.2,2016,0.6623,29,2022,44.1,2017,"2010, 2016, 2022, 2017",True,52.55
+United Republic of Tanzania,TZA,DBM at >30% overweight prevalence,2,2010,54.6,2022,0.6237,79,2022,-0.9,2020,"2010, 2022, 2022, 2020",True,46.97
+Malawi,MWI,DBM at >30% overweight prevalence,2,2010,46.9,2016,0.5877,73,2022,2.2,2020,"2010, 2016, 2022, 2020",True,41.83
+Ghana,GHA,No DBM,0,2010,55.6,2022,0.5029,57,2022,35.6,2020,"2010, 2022, 2022, 2020",True,35.24
+Burkina Faso,BFA,No DBM,0,2010,15.9,2021,0.7312,44,2022,17.1,2020,"2010, 2021, 2022, 2020",True,32.19
