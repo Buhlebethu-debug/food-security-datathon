@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import datetime, timedelta
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -12,7 +12,7 @@ default_args = {"retries": 1, "retry_delay": timedelta(minutes=5)}
 
 @dag(
     dag_id="integrated_eat_trade_pipeline",
-    schedule_interval="@monthly",
+    schedule="@monthly",
     start_date=datetime(2026, 1, 1),
     catchup=False,
     default_args=default_args,

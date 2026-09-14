@@ -8,7 +8,10 @@ This module:
 4. Derives DBM risk tiers.
 5. Calculates the gender food-insecurity gap.
 6. Merges the country-level datasets (carrying real dbm_pct through).
-7. Calculates the Nutritional Resilience Index (NRI).
+7. Calculates the Nutritional Resilience Index (NRI) - full 3-variable
+   version (4 countries with complete data) and a simplified 2-variable
+   robustness check (~14 countries, decision score + import dependency
+   only, no crop diversity).
 8. Produces analysis-ready tables for the load layer.
 """
 
@@ -95,6 +98,23 @@ def calculate_nri(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def calculate_nri_simplified(df: pd.DataFrame) -> pd.DataFrame:
+    """2-variable robustness check: female_decision_score and import
+    dependency only (no crop diversity, since that data wasn't extended
+    beyond the original 7-country set). Weighted 0.5/0.5 rather than the
+    full NRI's 0.4/0.4/0.2, since there's one fewer input.
+
+    NOTE: results should be presented alongside the full 3-variable NRI,
+    not as a replacement — they're not directly comparable in scale.
+    """
+    df = df.copy()
+    df["nri_simplified"] = (
+        (df["female_decision_score"] * 0.5)
+        - (df["net_staple_import_dependency_pct"] * 0.5)
+    ).round(2)
+    return df
+
+
 def build_country_analysis_table(dbm_df, empowerment_df, trade_df) -> pd.DataFrame:
     dbm_clean = flag_dbm_risk_tier(clean_dbm_data(dbm_df))
     empowerment_clean = clean_empowerment_data(empowerment_df)
@@ -116,6 +136,22 @@ def build_country_analysis_table(dbm_df, empowerment_df, trade_df) -> pd.DataFra
     final_df = pd.merge(merged, trade_for_merge, on="country_code", how="inner")
     final_df = calculate_nri(final_df)
     return final_df
+
+
+def build_country_analysis_table_simplified(dbm_df, decision_df, import_df) -> pd.DataFrame:
+    """Builds the extended (~14-country) simplified NRI table, using the
+    full 21-country DBM sample against decision + import dependency data
+    only (see calculate_nri_simplified for why crop diversity is excluded).
+    """
+    dbm_clean = flag_dbm_risk_tier(clean_dbm_data(dbm_df))
+    dbm_country_level = (
+        dbm_clean.groupby(["country_code", "country_clean"], as_index=False)
+        .agg(dbm_pct=("dbm_pct", "mean"))
+        .rename(columns={"country_clean": "country"})
+    )
+    merged = pd.merge(dbm_country_level, decision_df, on="country_code", how="inner")
+    merged = pd.merge(merged, import_df, on="country_code", how="inner")
+    return calculate_nri_simplified(merged)
 
 
 def build_sa_analysis_table(sa_df: pd.DataFrame) -> pd.DataFrame:
@@ -147,6 +183,7 @@ if __name__ == "__main__":
         extract_dbm_data, extract_sa_province_data,
         extract_empowerment_data, extract_trade_data
     )
+    from extract import load_female_decision_score_extended, load_import_dependency_extended
 
     dbm = extract_dbm_data()
     sa = extract_sa_province_data()
@@ -158,5 +195,13 @@ if __name__ == "__main__":
     for name, df in tables.items():
         print(f"\n=== {name} ({len(df)} rows) ===")
         print(df)
+
+    decision_ext = load_female_decision_score_extended()
+    import_ext = load_import_dependency_extended()
+    simplified = build_country_analysis_table_simplified(dbm, decision_ext, import_ext)
+    print(f"\n=== country_nutritional_resilience_simplified ({len(simplified)} rows) ===")
+    print(simplified[['country_code', 'dbm_pct', 'female_decision_score',
+                       'net_staple_import_dependency_pct', 'nri_simplified']]
+          .sort_values('nri_simplified', ascending=False))
 
     print("\n\u2713 Transformation successful!")

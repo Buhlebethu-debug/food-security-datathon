@@ -12,6 +12,32 @@ TARGET_COUNTRIES = {
     "South Africa": "ZAF",
 }
 
+# Full set of DBM-table countries (21), separate from the original 7-country
+# TARGET_COUNTRIES used for the full 3-variable NRI. Used for the simplified
+# 2-variable robustness check (decision score + import dependency only,
+# since crop diversity data wasn't extended to this larger set).
+ALL_DBM_COUNTRIES = {
+    "Burkina Faso": "BFA", "Benin": "BEN", "Cote d'Ivoire": "CIV",
+    "Cameroon": "CMR", "Gabon": "GAB", "Ghana": "GHA", "Gambia": "GMB",
+    "Guinea": "GIN", "Kenya": "KEN", "Liberia": "LBR", "Lesotho": "LSO",
+    "Madagascar": "MDG", "Malawi": "MWI", "Mauritania": "MRT",
+    "Mozambique": "MOZ", "Nigeria": "NGA", "Rwanda": "RWA",
+    "Sierra Leone": "SLE", "United Republic of Tanzania": "TZA",
+    "Uganda": "UGA", "Zimbabwe": "ZWE",
+}
+
+# Cereal import dependency ratio (%), 2021-2023 3-year average.
+# Source: FAOSTAT Suite of Food Security Indicators, pulled manually by
+# team (Sept 2026) since not all 21 countries were in the original bulk
+# extract. Countries not listed here (Benin, Cote d'Ivoire, Gabon,
+# Liberia, Madagascar, Sierra Leone, Uganda) are still missing —
+# excluded from the simplified NRI check, not assumed/imputed.
+MANUAL_IMPORT_DEPENDENCY = {
+    "CMR": 34.6, "GHA": 32.1, "LSO": 68.4, "MRT": 55.3, "MOZ": 47.3,
+    "NGA": 16.3, "RWA": 35.3, "GMB": 89.6, "GIN": 28.5, "KEN": 49.5,
+    "ZWE": 41.5,
+}
+
 RAW_DIR = "data/external"
 OUT_DIR = "data/raw"
 
@@ -56,6 +82,21 @@ def load_import_dependency():
     return df[["country", "country_code", "net_staple_import_dependency_pct", "import_data_year"]]
 
 
+def load_import_dependency_extended():
+    """Combines the original FAOSTAT bulk extract with MANUAL_IMPORT_DEPENDENCY
+    (countries pulled individually since the bulk file only covered the
+    original 7 TARGET_COUNTRIES). Manual entries take precedence since
+    they're a more recent 2021-2023 period.
+    """
+    df = load_import_dependency()
+    combined = dict(zip(df["country_code"], df["net_staple_import_dependency_pct"]))
+    combined.update(MANUAL_IMPORT_DEPENDENCY)
+    return pd.DataFrame([
+        {"country_code": code, "net_staple_import_dependency_pct": val}
+        for code, val in combined.items()
+    ])
+
+
 def load_female_decision_score():
     """Source: World Bank WDI, indicator SG.DMK.ALLD.FN.ZS (DHS-based).
 
@@ -76,6 +117,32 @@ def load_female_decision_score():
         latest_year, latest_val = max(valid, key=lambda x: x[0])
         records.append({
             "country": row["Country Name"],
+            "country_code": row["Country Code"],
+            "female_decision_score": latest_val,
+            "decision_data_year": latest_year,
+        })
+    return pd.DataFrame(records)
+
+
+def load_female_decision_score_extended(country_codes=None):
+    """Same source/indicator as load_female_decision_score (World Bank WDI,
+    SG.DMK.ALLD.FN.ZS), but parameterized to any country-code set instead
+    of just the 7 TARGET_COUNTRIES. Used for the simplified NRI check
+    across the full 21-country DBM sample.
+    """
+    if country_codes is None:
+        country_codes = list(ALL_DBM_COUNTRIES.values())
+    df = pd.read_csv(_require(f"{RAW_DIR}/worldbank_decision_index.csv"), skiprows=4)
+    df = df[df["Country Code"].isin(country_codes)]
+    year_cols = [c for c in df.columns if c.isdigit()]
+
+    records = []
+    for _, row in df.iterrows():
+        valid = [(int(y), row[y]) for y in year_cols if pd.notna(row[y])]
+        if not valid:
+            continue
+        latest_year, latest_val = max(valid, key=lambda x: x[0])
+        records.append({
             "country_code": row["Country Code"],
             "female_decision_score": latest_val,
             "decision_data_year": latest_year,
