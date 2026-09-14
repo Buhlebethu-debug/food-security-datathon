@@ -268,18 +268,13 @@ def build_country_analysis_table(
     trade_df: pd.DataFrame
 ) -> pd.DataFrame:
     """
-    Build the final country-level analysis table by merging:
+    Build the final country-level analysis table.
 
-    - Double Burden of Malnutrition
-    - Women's empowerment and crop diversity
-    - Trade dependency and food price volatility
+    The integrated table contains one row per country.
 
-    All datasets are joined using ISO3 country codes.
-
-    Note:
-    DBM survey-round information is preserved during cleaning.
-    No Malawi survey observation is selected automatically here because
-    the raw data does not establish whether 2015a or 2015b is preferable.
+    DBM survey-round observations are preserved separately in
+    the dbm_by_country table rather than duplicating countries
+    in the integrated resilience table.
     """
 
     # Clean DBM data and assign risk tiers.
@@ -297,36 +292,42 @@ def build_country_analysis_table(
         trade_df
     )
 
-    # Standardize DBM column names.
-    dbm_clean.columns = [
-        column.lower().strip()
-        for column in dbm_clean.columns
-    ]
-
-    # Make sure country_code exists.
-    if "country_code" not in dbm_clean.columns:
-        raise ValueError(
-            "build_country_analysis_table: "
-            "DBM dataset must contain 'country_code' "
-            "to merge with the other country datasets."
+    # ------------------------------------------------------------------
+    # DBM country-level data
+    # ------------------------------------------------------------------
+    #
+    # DBM contains two Malawi observations.
+    # We do NOT choose between them here because we do not yet
+    # know whether 2015a and 2015b represent directly comparable
+    # survey rounds.
+    #
+    # Therefore DBM is kept separately in dbm_by_country.
+    #
+    # For the integrated country table, we only need the country
+    # identifiers so that we know which countries exist in the DBM data.
+    dbm_countries = (
+        dbm_clean[
+            ["country_code", "country_clean"]
+        ]
+        .drop_duplicates(subset=["country_code"])
+        .rename(
+            columns={
+                "country_clean": "country"
+            }
         )
-
-    # Merge DBM + empowerment data.
-    merged = pd.merge(
-        dbm_clean,
-        empowerment_clean,
-        on="country_code",
-        how="inner",
-        suffixes=("", "_empowerment")
     )
 
-    # Remove duplicate country column created by the merge.
-    if "country_empowerment" in merged.columns:
-        merged = merged.drop(
-            columns=["country_empowerment"]
-        )
+    # ------------------------------------------------------------------
+    # Merge country-level datasets
+    # ------------------------------------------------------------------
 
-    # Merge trade data.
+    merged = pd.merge(
+        dbm_countries[["country_code"]],
+        empowerment_clean,
+        on="country_code",
+        how="inner"
+    )
+
     final_df = pd.merge(
         merged,
         trade_clean,
@@ -338,7 +339,6 @@ def build_country_analysis_table(
     final_df = calculate_nri(final_df)
 
     return final_df
-
 
 # ---------------------------------------------------------------------------
 # 7. Build South Africa provincial analysis table
