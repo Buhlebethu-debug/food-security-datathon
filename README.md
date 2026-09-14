@@ -2,19 +2,21 @@
 
 A Women in Data Datathon submission combining two real-data pipelines: a country-level
 Nutritional Resilience Index (NRI) and a household-level Double Burden of Malnutrition
-(DBM) analysis, tested against each other where they overlap — plus a simplified,
+(DBM) analysis, tested against each other where they overlap plus a simplified,
 larger-sample robustness check on the NRI side.
 
 ## Why this exists
 
 Growing up, one of us (Zayy) repeatedly noticed a pattern without a name for it: an
 overweight or obese mother alongside a visibly undernourished child. A friend studying
-pediatrics later gave it a name — the **double burden of malnutrition (DBM)** — the
+pediatrics later gave it a name the **double burden of malnutrition (DBM)**  the
 coexistence of undernutrition and overweight/obesity within the same household.
 
 Separately, the other of us (Buhle) was asking an upstream question: what makes a
-country's food system able to absorb a shock — a bad harvest, a price spike — rather
-than just measuring current hunger? The **Nutritional Resilience Index (NRI)** is a
+country's food system able to absorb a shock a bad harvest, a price spike rather
+than just measuring current hunger? 
+
+The **Nutritional Resilience Index (NRI)** is a
 first-pass composite meant to proxy that structural capacity.
 
 This project joins both questions: can a country's structural food-system
