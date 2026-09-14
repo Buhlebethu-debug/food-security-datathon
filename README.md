@@ -68,7 +68,7 @@ docker-compose.yml          # Containerized Postgres (included; pipeline has bee
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env   # edit if your Postgres isn't on localhost:5432
+cp .env.example .env   # edit if your Postgres isn't on localhost:5433
 createdb food_datathon
 
 python3 src/extract.py
