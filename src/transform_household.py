@@ -110,7 +110,10 @@ def build_country_analysis_table(dbm_df, empowerment_df, trade_df) -> pd.DataFra
         dbm_country_level[["country_code", "dbm_pct"]],
         empowerment_clean, on="country_code", how="inner"
     )
-    final_df = pd.merge(merged, trade_clean, on="country_code", how="inner")
+    trade_for_merge = trade_clean[[
+        c for c in trade_clean.columns if c != "country"
+    ]]
+    final_df = pd.merge(merged, trade_for_merge, on="country_code", how="inner")
     final_df = calculate_nri(final_df)
     return final_df
 
