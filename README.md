@@ -3,7 +3,7 @@
 A Women in Data Datathon submission combining two real-data pipelines: a country-level
 Nutritional Resilience Index (NRI) and a household-level Double Burden of Malnutrition
 (DBM) analysis, tested against each other where they overlap plus a simplified,
-larger-sample robustness check on the NRI side.
+larger-sample robustness check on the NRI side. 
 
 ## Why this exists
 
