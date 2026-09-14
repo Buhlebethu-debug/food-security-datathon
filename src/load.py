@@ -1,7 +1,10 @@
 import os
 import pandas as pd
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from transform import PROCESSED_PATH
+
+load_dotenv()
 
 VIEW_SQL = """
 CREATE OR REPLACE VIEW view_eat_trade_empowerment_matrix AS
@@ -21,20 +24,18 @@ FROM integrated_eat_trade_matrix
 
 
 def get_engine():
-    db_user = os.environ.get("DB_USER", os.getenv("USER", "postgres"))
-    db_pass = os.environ.get("DB_PASS", "")
-    db_host = os.environ.get("DB_HOST", "localhost")
-    db_port = os.environ.get("DB_PORT", "5432")
-    db_name = os.environ.get("DB_NAME", "food_datathon")
+    db_user = os.environ.get("PG_USER", os.getenv("USER", "postgres"))
+    db_pass = os.environ.get("PG_PASSWORD", "")
+    db_host = os.environ.get("PG_HOST", "localhost")
+    db_port = os.environ.get("PG_PORT", "5432")
+    db_name = os.environ.get("PG_DATABASE", "food_datathon")
     db_url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
     return create_engine(db_url)
 
 
 def load_to_postgres():
     if not os.path.exists(PROCESSED_PATH):
-        raise FileNotFoundError(
-            f"{PROCESSED_PATH} not found \u2014 run `python src/transform.py` first."
-        )
+        raise FileNotFoundError(f"{PROCESSED_PATH} not found \u2014 run `python src/transform.py` first.")
 
     integrated_df = pd.read_csv(PROCESSED_PATH)
     engine = get_engine()
