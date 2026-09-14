@@ -83,3 +83,76 @@ The DAG is scheduled `@monthly` rather than daily. Our sources are periodically 
 * **Sample size for the SA table is small** (11 rows) since it's a province-level summary, not row-level survey data — this pipeline demonstrates the ETL/orchestration pattern at the scale our available, ungated data actually supports, rather than simulating a bigger dataset.
 * **`if_exists="replace"`** is used on load rather than `"append"`, since each run represents the latest known snapshot of these sources, not an incrementing log.
 * No CI workflow is wired up yet (`tests/test_pipeline.py` runs locally with `python tests/test_pipeline.py`); adding a GitHub Actions job that runs it on every push would be the natural next step.
+
+
+
+# Food Security & Nutritional Resilience Data Pipeline
+
+## Overview
+This project was built for the **Women in Data Datathon** to analyze food security and agricultural trade dependency across target countries. 
+
+It takes raw data on malnutrition and international food trade, processes it to compute a **Nutritional Resilience Index (NRI)**, and stores the results in a PostgreSQL database for reporting and data visualization.
+
+---
+
+## What This Project Does
+
+* **Ingests Raw Data:** Collects regional data on Double Burden of Malnutrition (DBM) and national agricultural trade metrics.
+* **Calculates NRI (Nutritional Resilience Index):** Measures how resilient a region's food system is based on its farming diversity, trade reliance, and health indicators.
+* **Stores Analytical Data:** Prepares structured PostgreSQL tables and creates a unified view (`view_eat_trade_empowerment_matrix`) for easy querying and dashboard reporting.
+* **Automates & Visualizes:** Uses Apache Airflow to run the pipeline automatically and outputs visual chart assets (`data/nri_vs_dbm_chart.png`).
+
+---
+
+## Technical Architecture
+
+The codebase follows a modular ETL (Extract, Transform, Load) structure:
+
+```text
+├── dags/
+│   └── food_insecurity_dag.py    # Airflow DAG for pipeline orchestration
+├── data/
+│   └── nri_vs_dbm_chart.png      # Output scatter plot visualization
+├── src/
+│   ├── extract.py                # Ingestion script for raw datasets
+│   ├── transform.py              # Data cleaning & NRI metric calculation logic
+│   ├── load.py                   # Loads processed data into PostgreSQL
+│   └── schema.sql                # SQL staging tables & view definitions
+├── .gitignore                    # Prevents virtual environments & secrets from uploading
+└── README.md                     # System documentation
+
+Component Details
+1. Data Processing (src/)
+* extract.py: Fetches raw data from local files or APIs containing malnutrition rates and import/export balances.
+* transform.py: Cleans missing values, normalizes cross-country metrics, and calculates the NRI formula: $$\text{NRI} = f(\text{Agricultural Diversity}, \text{Import Vulnerability}, \text{Nutritional Staging})$$ 
+* load.py: Handles database connections and inserts processed records into target SQL tables.
+2. Database & SQL Analytics (src/schema.sql)
+* Staging Tables: Stores cleaned raw data for malnutrition and trade metrics.
+* Analytical View (view_eat_trade_empowerment_matrix): Joins malnutrition percentages (dbm_pct), trade dependency scores, and regional decision metrics into a single table for fast dashboard queries.
+3. Orchestration & Charts (dags/ & data/)
+* Airflow DAG: Scheduled workflow that automatically runs the Extract, Transform, and Load steps in sequence.
+* NRI Plot: Generates a visual plot comparing a country's Nutritional Resilience Index against its Malnutrition Risk Tier.
+```
+
+How to Run
+1. Set Up Database
+Run the SQL script to create the tables and analytical views:
+psql -U your_username -d your_database -f src/schema.sql
+
+2. Run the Pipeline Manually
+You can run the ETL steps individually using Python:
+python3 src/extract.py
+python3 src/transform.py
+python3 src/load.py
+
+3. Run via Airflow
+Move dags/food_insecurity_dag.py to your Airflow dags/ directory and trigger the DAG from the Airflow UI.
+Submitted by Buhlebethu Biyela for the Women in Data Datathon.
+
+
+
+
+
+
+
+
