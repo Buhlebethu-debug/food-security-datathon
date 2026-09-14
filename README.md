@@ -1,158 +1,161 @@
-# Food Insecurity & the Double Burden of Malnutrition — Data Pipeline
+# The Double Burden: Linking Female Agency, Trade Vulnerability & Household Malnutrition
 
-A small ETL pipeline supporting our Women in Data datathon submission. It extracts, cleans, and loads two research-derived datasets into PostgreSQL, orchestrated with an Airflow DAG — applying the ETL/DAG/Postgres workflow from DataCamp's *Introduction to Data Engineering* course to this project's own data.
+A Women in Data Datathon submission combining two real-data pipelines: a country-level
+Nutritional Resilience Index (NRI) and a household-level Double Burden of Malnutrition
+(DBM) analysis, tested against each other where they overlap.
 
 ## Why this exists
 
-Growing up, I often noticed a pattern that I didn't have a name for: an overweight or obese mother alongside a child who appeared visibly undernourished.
+Growing up, one of us (Zayy) repeatedly noticed a pattern without a name for it: an
+overweight or obese mother alongside a visibly undernourished child. A friend studying
+pediatrics later gave it a name — the **double burden of malnutrition (DBM)** — the
+coexistence of undernutrition and overweight/obesity within the same household.
 
-I didn't initially think of this as a data or food-systems question. It was simply something I had seen repeatedly. Later, a friend studying pediatrics introduced me to the term **double burden of malnutrition (DBM)** — a phenomenon in which different forms of malnutrition, such as maternal overweight or obesity and child undernutrition, can coexist within the same household. I also learned that DBM can be studied at different levels, which made me want to understand the phenomenon beyond the individual level.
+Separately, the other of us (Buhle) was asking an upstream question: what makes a
+country's food system able to absorb a shock — a bad harvest, a price spike — rather
+than just measuring current hunger? The **Nutritional Resilience Index (NRI)** is a
+first-pass composite meant to proxy that structural capacity.
 
-While researching food systems for the Women in Data datathon, I kept encountering two issues separately: **adult obesity** and **child malnutrition**. That earlier conversation about DBM came back to me.
+This project joins both questions: can a country's structural food-system
+characteristics (NRI) predict where household-level double burden is most likely?
+We built real, independently-sourced pipelines for both halves, and tested them
+against each other for the 4 countries where they overlap.
 
-I started wondering: **what if we don't investigate these as two separate problems, or even only as a single mother-child pairing, but as a household-level phenomenon?**
+## Data sources — all real, no synthetic/placeholder data
 
-That became the question behind this project:
+| Table | Source | Coverage |
+|---|---|---|
+| `integrated_eat_trade_matrix` (NRI inputs) | FAOSTAT (import dependency, crop production), World Bank/DHS indicator SG.DMK.ALLD.FN.ZS (household decision-making) | 7 countries |
+| `dbm_by_country` (categorical DBM) | Food Systems Dashboard, Popkin et al. 2020 | 7 countries, classification based on 2010 survey data |
+| `dbm_by_country_household` (continuous DBM) | Bawuah et al. (2026), *Maternal & Child Nutrition*, 22(1), e70175 | 22 sub-Saharan African countries, 103,497 DHS mother-child pairs |
+| `sa_food_insecurity_by_province` | Statistics South Africa, GHS Report 03-10-28 (2025) | South Africa, 2019/2022/2023 (Northern Cape only has all 3 years with the female-headed breakdown) |
 
-> **How can the food system produce conditions in which undernutrition and overweight/obesity coexist within the same household?**
-
-This shifted the project from simply asking whether food insecurity exists to asking what it can look like **inside a household**. Rising food prices can push households toward cheaper, energy-dense staples, while nutrient-dense foods can remain relatively expensive and vulnerable to losses across the food system. These pressures may affect household members differently, potentially contributing to the coexistence of undernutrition and overweight/obesity.
-
-Our core finding connects three parts of that story: the **food-price substitution pathway**, **post-harvest loss of nutrient-dense foods**, and the **double burden of malnutrition**. The pipeline puts the two DBM-relevant datasets behind that investigation into a queryable form instead of leaving them as static spreadsheets, so downstream analysis, charts, or dashboards can work from one source of truth.
-
-## Data sources
-
-| Table                            | Source                                                      | Notes                                                            |
-| -------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------- |
-| `dbm_by_country`                 | Bawuah et al. (2026), *Maternal & Child Nutrition*, Table 1 | 22 sub-Saharan African countries, 103,497 DHS mother-child pairs |
-| `sa_food_insecurity_by_province` | Statistics South Africa, GHS Report 03-10-28 (2025)         | South Africa, 2019/2022/2023                                     |
-
-Both are transcribed from published, cited tables rather than pulled from a live API — the underlying microdata (DHS/MICS) is access-gated and required a formal registration process we didn't have time to complete before the submission deadline. See the project's main report PDF for the full source list and that limitation in context.
+The Bawuah et al. and Stats SA tables are transcribed from published, cited tables
+rather than pulled from a live API — the underlying DHS/MICS microdata is
+access-gated and required registration we didn't have time to complete before the
+deadline. This is stated here rather than hidden.
 
 ## Pipeline structure
 
 ```text
 src/
-  extract.py       # reads the two raw CSVs, validates expected columns
-  transform.py     # cleans country-name inconsistencies, derives dbm_risk_tier,
-                   # computes the female-headed-household food-insecurity gap
-  load.py           # writes analysis-ready tables to Postgres via pandas.to_sql
-  etl.py            # ties extract -> transform -> load into one callable
+  extract.py              # NRI pipeline: real FAOSTAT/World Bank ingestion, fails loudly if a source file is missing
+  transform.py             # NRI pipeline: computes Nutritional Resilience Index
+  load.py                   # NRI pipeline: loads into Postgres, rebuilds view_eat_trade_empowerment_matrix
+  visualize.py               # NRI pipeline: renders data/nri_vs_dbm_chart.png
+
+  extract_household.py    # Household pipeline: reads Bawuah et al. + Stats SA CSVs
+  transform_household.py   # Household pipeline: cleans DBM survey rounds, computes gender gap, joins real NRI x real DBM (4-country overlap)
+  load_household.py         # Household pipeline: loads into Postgres, rebuilds view_household_dbm_analysis
+
+  apply_schema.py          # Applies src/schema.sql directly (optional; load.py already creates the view inline)
+  schema.sql                 # View definition for view_eat_trade_empowerment_matrix
 
 dags/
-  food_insecurity_dag.py  # Airflow TaskFlow DAG that runs etl()
+  food_insecurity_dag.py  # Airflow TaskFlow DAG for the NRI pipeline (extract -> transform -> load), validated standalone
 
-data/raw/            # versioned source CSVs (see table above)
+data/
+  raw/                      # Versioned, real source CSVs for both pipelines
+  external/                 # Raw downloads from FAOSTAT / World Bank / Food Systems Dashboard
+  processed/                 # Final integrated_eat_trade_matrix.csv
+  nri_vs_dbm_chart.png       # NRI vs. DBM category chart
 
-tests/               # smoke tests for extract/transform (no DB required)
+docker-compose.yml          # Containerized Postgres (included; pipeline has been validated
+                             # against a local Postgres.app instance, not yet run through Docker)
 ```
 
-## Running it
+## Running the NRI pipeline
 
 ```bash
 pip install -r requirements.txt
 cp .env.example .env   # edit if your Postgres isn't on localhost:5432
 createdb food_datathon
 
-python src/etl.py
+python3 src/extract.py
+python3 src/transform.py
+python3 src/load.py
+python3 src/visualize.py
 ```
 
 Verify it landed:
 
 ```sql
-SELECT country, dbm_pct, dbm_risk_tier
-FROM dbm_by_country
-ORDER BY dbm_pct DESC
-LIMIT 5;
+SELECT * FROM view_eat_trade_empowerment_matrix ORDER BY nutritional_resilience_index DESC;
 ```
 
-## Running the DAG
+## Running the household-DBM pipeline
 
 ```bash
-export AIRFLOW_HOME=~/airflow_home
-
-airflow standalone   # first run: initializes the metadata DB, prints a login
-
-# copy dags/food_insecurity_dag.py into $AIRFLOW_HOME/dags/
+python3 src/extract_household.py
+python3 src/transform_household.py
+python3 src/load_household.py
 ```
 
-The DAG is scheduled `@monthly` rather than daily. Our sources are periodically revised published research snapshots, not a live operational feed — there's nothing new to extract at midnight every day. If this pipeline is later pointed at a live-updating source (e.g. a FAOSTAT API endpoint), the schedule can be changed back to a cron daily job.
+Verify it landed:
+
+```sql
+SELECT * FROM view_household_dbm_analysis ORDER BY nutritional_resilience_index;
+```
+
+## The Nutritional Resilience Index (NRI)
+NRI = (0.4 x Female Household Decision-Making Score)
++ (0.4 x Crop Diversity Evenness x 100)
+- (0.2 x Net Staple Import Dependency %)
+
+- **Female Household Decision-Making Score**: World Bank/DHS indicator SG.DMK.ALLD.FN.ZS — measures
+  participation in the three major household decisions (own health care, major purchases, family
+  visits). This is a general household decision-making measure, **not** agriculture-specific.
+- **Crop Diversity Evenness**: Shannon evenness index (0-1) computed from real FAOSTAT crop
+  production data, livestock/processed items excluded.
+- **Net Staple Import Dependency %**: FAOSTAT cereal import dependency ratio; negative values
+  indicate net exporters.
+- Weights (0.4/0.4/0.2) are an **illustrative first-pass allocation**, not derived from regression
+  or externally validated.
+
+## What we found
+
+**7-country NRI landscape (categorical DBM, 2010 data):** No clear relationship between NRI and
+DBM classification at this sample size and DBM resolution.
+
+**4-country real overlap test (continuous DBM, Bawuah et al. 2026):** Burkina Faso, Ghana, Malawi,
+and Tanzania are the only countries present in both the NRI dataset and the Bawuah et al. sample.
+The observed relationship runs **opposite** to our hypothesis — higher NRI paired with higher DBM
+prevalence, not lower. All four countries sit in a narrow, low-DBM band (3.2%-6.9%, below Bawuah
+et al.'s 22-country mean of 6.7%). With n=4, this is not strong evidence against the hypothesis —
+it demonstrates the pipeline can run a genuine test, and that a larger, wider-range country sample
+is the clear next step.
+
+**Household mechanism (Bawuah et al., 22 countries):** the richest households have 57% lower odds
+of child stunting than the poorest, but 391% higher odds of maternal overweight — the same
+economic advantage that protects against one form of malnutrition exposes the mother to the other.
+
+**Northern Cape, South Africa:** the gap between food insecurity in female-headed vs. all
+households nearly tripled in four years (3.0pp in 2019, 5.8pp in 2022, 7.3pp in 2023). This is a
+single-province finding — other provinces only have single-year 2023 data without this breakdown.
 
 ## Known limitations
 
-* **Sample size for the SA table is small** (11 rows) since it's a province-level summary, not row-level survey data — this pipeline demonstrates the ETL/orchestration pattern at the scale our available, ungated data actually supports, rather than simulating a bigger dataset.
-* **`if_exists="replace"`** is used on load rather than `"append"`, since each run represents the latest known snapshot of these sources, not an incrementing log.
-* No CI workflow is wired up yet (`tests/test_pipeline.py` runs locally with `python tests/test_pipeline.py`); adding a GitHub Actions job that runs it on every push would be the natural next step.
+- NRI weights are a first-pass modeling choice, not validated or externally benchmarked.
+- The 4-country real NRI-x-DBM overlap is too small to confirm or refute the hypothesis either way.
+- Female decision-making measure is household-general, not agriculture-specific.
+- Categorical DBM data (7-country test) is from 2010; more recent continuous DBM data only
+  covers the 4-country sub-Saharan African overlap.
+- Bawuah et al. and Stats SA data are transcribed from published tables, not raw microdata
+  (DHS/MICS microdata is access-gated; registration wasn't completed before the deadline).
+- The food-price-substitution / post-harvest-loss pathway linking to DBM is a stated hypothesis,
+  not yet quantitatively tested against loss-rate data.
+- `docker-compose.yml` is included but the pipeline has only been validated end-to-end against
+  a local Postgres.app instance, not through the container.
+- No live Airflow scheduler run has been validated; the DAG has been reviewed for correctness
+  and each stage runs successfully standalone.
 
+## Sources
 
+- FAOSTAT / Food Systems Dashboard — Cereal Import Dependency Ratio, Crop Production, DBM Classification
+- World Bank / DHS — Women's Household Decision-Making (SG.DMK.ALLD.FN.ZS)
+- Bawuah et al. (2026), *Maternal & Child Nutrition*, 22(1), e70175
+- Statistics South Africa, GHS Report 03-10-28 (2025)
+- FAO, SOFI 2026
+- Dieffenbach & Stein (2012), *Journal of Nutrition*
 
-# Food Security & Nutritional Resilience Data Pipeline
-
-## Overview
-This project was built for the **Women in Data Datathon** to analyze food security and agricultural trade dependency across target countries. 
-
-It takes raw data on malnutrition and international food trade, processes it to compute a **Nutritional Resilience Index (NRI)**, and stores the results in a PostgreSQL database for reporting and data visualization.
-
----
-
-## What This Project Does
-
-* **Ingests Raw Data:** Collects regional data on Double Burden of Malnutrition (DBM) and national agricultural trade metrics.
-* **Calculates NRI (Nutritional Resilience Index):** Measures how resilient a region's food system is based on its farming diversity, trade reliance, and health indicators.
-* **Stores Analytical Data:** Prepares structured PostgreSQL tables and creates a unified view (`view_eat_trade_empowerment_matrix`) for easy querying and dashboard reporting.
-* **Automates & Visualizes:** Uses Apache Airflow to run the pipeline automatically and outputs visual chart assets (`data/nri_vs_dbm_chart.png`).
-
----
-
-## Technical Architecture
-
-The codebase follows a modular ETL (Extract, Transform, Load) structure:
-
-```text
-├── dags/
-│   └── food_insecurity_dag.py    # Airflow DAG for pipeline orchestration
-├── data/
-│   └── nri_vs_dbm_chart.png      # Output scatter plot visualization
-├── src/
-│   ├── extract.py                # Ingestion script for raw datasets
-│   ├── transform.py              # Data cleaning & NRI metric calculation logic
-│   ├── load.py                   # Loads processed data into PostgreSQL
-│   └── schema.sql                # SQL staging tables & view definitions
-├── .gitignore                    # Prevents virtual environments & secrets from uploading
-└── README.md                     # System documentation
-
-Component Details
-1. Data Processing (src/)
-* extract.py: Fetches raw data from local files or APIs containing malnutrition rates and import/export balances.
-* transform.py: Cleans missing values, normalizes cross-country metrics, and calculates the NRI formula: $$\text{NRI} = f(\text{Agricultural Diversity}, \text{Import Vulnerability}, \text{Nutritional Staging})$$ 
-* load.py: Handles database connections and inserts processed records into target SQL tables.
-2. Database & SQL Analytics (src/schema.sql)
-* Staging Tables: Stores cleaned raw data for malnutrition and trade metrics.
-* Analytical View (view_eat_trade_empowerment_matrix): Joins malnutrition percentages (dbm_pct), trade dependency scores, and regional decision metrics into a single table for fast dashboard queries.
-3. Orchestration & Charts (dags/ & data/)
-* Airflow DAG: Scheduled workflow that automatically runs the Extract, Transform, and Load steps in sequence.
-* NRI Plot: Generates a visual plot comparing a country's Nutritional Resilience Index against its Malnutrition Risk Tier.
-```
-
-How to Run
-1. Set Up Database
-Run the SQL script to create the tables and analytical views:
-psql -U your_username -d your_database -f src/schema.sql
-
-2. Run the Pipeline Manually
-You can run the ETL steps individually using Python:
-python3 src/extract.py
-python3 src/transform.py
-python3 src/load.py
-
-3. Run via Airflow
-Move dags/food_insecurity_dag.py to your Airflow dags/ directory and trigger the DAG from the Airflow UI.
-Submitted by Buhlebethu Biyela for the Women in Data Datathon.
-
-
-
-
-
-
-
-
+Submitted by Buhlebethu Biyela & Zayy Ackerman for the Women in Data Datathon.
